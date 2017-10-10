@@ -135,6 +135,7 @@ func (o *RepoInfo) walkFunc(path string, info os.FileInfo, err error) error {
 			glog.Errorf("Unable to find relative path between %q and %q: %v", o.projectDir, path, err)
 			return err
 		}
+		path = canonicalize(filepath.Dir(path))
 		c.normalizeUsers()
 		o.approvers[path] = sets.NewString(c.Approvers...)
 		o.approvers[path].Insert(c.Assignees...)
