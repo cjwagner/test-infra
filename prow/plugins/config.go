@@ -60,6 +60,7 @@ type Configuration struct {
 	Heart                Heart                  `json:"heart,omitempty"`
 	Label                *Label                 `json:"label,omitempty"`
 	Lgtm                 []Lgtm                 `json:"lgtm,omitempty"`
+	MergeBlocker         MergeBlocker           `json:"merge-blocker,omitempty"`
 	RepoMilestone        map[string]Milestone   `json:"repo_milestone,omitempty"`
 	RequireMatchingLabel []RequireMatchingLabel `json:"require_matching_label,omitempty"`
 	RequireSIG           RequireSIG             `json:"requiresig,omitempty"`
@@ -68,6 +69,16 @@ type Configuration struct {
 	Size                 *Size                  `json:"size,omitempty"`
 	Triggers             []Trigger              `json:"triggers,omitempty"`
 	Welcome              []Welcome              `json:"welcome,omitempty"`
+}
+
+// MergeBlocker contains configurations for the merge-blocker plugin.
+type MergeBlocker struct {
+	// ID of the github team allowed to use the `/merge-blocker` command.
+	// You can curl the following endpoint in order to determine the ID of your
+	// team:
+	// curl -H "Authorization: token <token>" https://api.github.com/orgs/<org-name>/teams
+	TeamID   int    `json:"team-id,omitempty"`
+	TeamName string `json:"team-name,omitempty"`
 }
 
 // Golint holds configuration for the golint plugin
