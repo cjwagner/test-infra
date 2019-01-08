@@ -56,6 +56,8 @@ type Configuration struct {
 	Cat                  Cat                    `json:"cat,omitempty"`
 	CherryPickUnapproved CherryPickUnapproved   `json:"cherry_pick_unapproved,omitempty"`
 	ConfigUpdater        ConfigUpdater          `json:"config_updater,omitempty"`
+	EZCommandConfigs     []EZCommandConfig      `json:"ez_commands,omitempty"`
+	EZCommands           EZCommands             `json:"-"`
 	Golint               *Golint                `json:"golint,omitempty"`
 	Heart                Heart                  `json:"heart,omitempty"`
 	Label                *Label                 `json:"label,omitempty"`
@@ -844,4 +846,50 @@ func (c *Configuration) Validate() error {
 	}
 
 	return nil
+}
+
+// compiled version of EZCommandConfigs
+//
+type EZCommands map[string][]command.Command
+
+func (e EZCommands) ForRepo(org, repo string) []command.Command {
+	// Repo scoped commands override org scoped commands with the same name.
+}
+
+func parseSimpleCommands(configs []EZCommandConfig) (EZCommands, error) {
+
+}
+
+type EZCommandConfig struct {
+	Name  string
+	Repos []string
+
+	// Exactly one of the following structs must be specified.
+	SingleLabel *SingleLabelConfig `json:"single_label_command,omitempty"`
+	MultiLabel  *MultiLabelConfig  `json:"multi_label_command,omitempty"`
+}
+
+type PolicyConfig struct {
+	// Exactly one of the following structs must be specified.
+	TeamAccess *PolicyTeamAccess `json:"team_access,omitempty"`
+}
+
+type SingleLabelConfig struct {
+	Label  string        `json:"label"`
+	Policy *PolicyConfig `json:"policy,omitempty"`
+}
+
+type MultiLabelConfig struct {
+	ArgToLabel        map[string]string `json:"arg_to_label"`
+	MutuallyExclusive bool              `json:"mutually_exclusive"`
+	Policy            *PolicyConfig     `json:"policy,omitempty"`
+}
+
+type PolicyTeamAccess struct {
+	ID   int    `json:"id"`
+	Name string `json:"name,omitempty"`
+}
+
+func (e *EZCommandConfig) parse() (*command.Command, error) {
+
 }
