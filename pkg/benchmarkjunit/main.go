@@ -39,7 +39,7 @@ func main() {
 		Short: "Runs go benchmarks and outputs junit xml.",
 		Long:  `Runs "go test -v -run='^$' -bench=. <packages>" and translates the output into JUnit XML.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			run(opts, cmd, args)
+			run(opts, args)
 		},
 	}
 	cmd.Flags().StringVarP(&opts.outputFile, "output", "o", "-", "output file")
@@ -51,7 +51,7 @@ func main() {
 	}
 }
 
-func run(opts *options, cmd *cobra.Command, args []string) {
+func run(opts *options, args []string) {
 	testArgs := []string{
 		"test", "-v", "-run='^$'", "-bench=.",
 	}
@@ -74,6 +74,7 @@ func run(opts *options, cmd *cobra.Command, args []string) {
 	// Now parse output to JUnit, marshal to XML, and output.
 	junit, err := parse(testOutput)
 	if err != nil {
+		fmt.Printf("Error parsing go test output: %v.\nOutput:\n%s\n\n", err, string(testOutput))
 		logrus.WithError(err).Fatal("Error parsing 'go test' output.")
 	}
 	junitBytes, err := xml.Marshal(junit)

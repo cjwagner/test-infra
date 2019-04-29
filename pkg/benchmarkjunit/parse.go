@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"k8s.io/test-infra/testgrid/metadata/junit"
 )
 
 var (
@@ -49,47 +50,6 @@ var (
 	reActionLine = regexp.MustCompile(`^--- (BENCH|SKIP|FAIL):\s+(\S+)\s*$`)
 )
 
-// Property defines the xml element that stores additional metrics about each benchmark.
-type Property struct {
-	Name  string `xml:"name,attr"`
-	Value string `xml:"value,attr"`
-}
-
-// Properties defines the xml element that stores the list of properties that are associated with one benchmark.
-type Properties struct {
-	PropertyList []Property `xml:"property"`
-}
-
-// Failure defines the xml element that stores failure text.
-type Failure struct {
-	Text string `xml:",chardata"`
-}
-
-// TestCase defines the xml element that stores all information associated with one benchmark.
-type TestCase struct {
-	ClassName    string     `xml:"class_name,attr"`
-	Name         string     `xml:"name,attr"`
-	Time         string     `xml:"time,attr"`
-	Failure      *Failure   `xml:"failure,omitempty"`
-	Skipped      bool       `xml:"skipped,omitempty"`
-	PropertyList Properties `xml:"properties"`
-}
-
-// TestSuite defines the outer-most xml element that contains all TestCases.
-type TestSuite struct {
-	Name      string     `xml:"name,attr"`
-	Tests     int        `xml:"tests,attr"`
-	Failures  int        `xml:"failures,attr"`
-	Time      string     `xml:"time,attr"`
-	TestCases []TestCase `xml:"testcase"`
-}
-
-// TestSuites defines the xml element that stores the list of TestSuites
-type TestSuites struct {
-	XMLName string      `xml:"testsuites"`
-	List    []TestSuite `xml:"testsuite"`
-}
-
 func truncate(str string, n int) string {
 	if len(str) <= n {
 		return str
@@ -100,59 +60,60 @@ func truncate(str string, n int) string {
 	return str[:n]
 }
 
-func (s *TestSuite) recordLogText(text string) {
-	if len(s.TestCases) == 0 {
+func recordLogText(s *junit.Suite, text string) {
+	if len(s.Results) == 0 {
 		logrus.Error("Tried to record Benchmark log text before any Benchmarks were found for the package!")
 		return
 	}
-	tc := &s.TestCases[len(s.TestCases)-1]
-	// TODO: make failure text truncation configurable.
+	result := &s.Results[len(s.Results)-1]
+	// TODO: make text truncation configurable.
 	text = truncate(text, 1000)
-	// For now only record log text for failures.
-	if tc.Failure == nil {
-		return
+
+	switch {
+	case result.Failure != nil:
+		*result.Failure = text
+		// Also add failure text to "categorized_fail" property for TestGrid.
+		result.SetProperty("categorized_fail", text)
+
+	case result.Skipped != nil:
+		*result.Skipped = text
+
+	default:
+		result.Output = &text
 	}
-	tc.Failure.Text = text
-	// Also add failure text to "categorized_fail" property for TestGrid.
-	tc.PropertyList.PropertyList = append(
-		tc.PropertyList.PropertyList,
-		Property{Name: "categorized_fail", Value: text},
-	)
 }
 
-// propertiesFromMatch returns the PropertyList and test duration for a Benchmark metric line match (reBenchMetrics).
-func propertiesFromMatch(match []string) (*Properties, string, error) {
-	var props []Property
+// applyPropertiesFromMatch sets the properties and test duration for Result based on a Benchmark metric line match (reBenchMetrics).
+func applyPropertiesFromMatch(result *junit.Result, match []string) error {
 	opCount, err := strconv.ParseFloat(match[2], 64)
 	if err != nil {
-		return nil, "", fmt.Errorf("error parsing opcount %q: %v", match[2], err)
+		return fmt.Errorf("error parsing opcount %q: %v", match[2], err)
 	}
 	opDuration, err := strconv.ParseFloat(match[3], 64)
 	if err != nil {
-		return nil, "", fmt.Errorf("error parsing ns/op %q: %v", match[3], err)
+		return fmt.Errorf("error parsing ns/op %q: %v", match[3], err)
 	}
-	benchmarkDuration := fmt.Sprintf("%f", opCount*opDuration/1000000000) // convert from ns to s.
-
-	props = append(props, Property{Name: "op count", Value: match[2]})
-	props = append(props, Property{Name: "avg op duration (ns/op)", Value: match[3]})
+	result.Time = opCount * opDuration / 1000000000 // convert from ns to s.
+	result.SetProperty("op count", match[2])
+	result.SetProperty("avg op duration (ns/op)", match[3])
 	if len(match[4]) > 0 {
-		props = append(props, Property{Name: "MB/s", Value: match[4]})
+		result.SetProperty("MB/s", match[4])
 	}
 	if len(match[5]) > 0 {
-		props = append(props, Property{Name: "alloced B/op", Value: match[5]})
+		result.SetProperty("alloced B/op", match[5])
 	}
 	if len(match[6]) > 0 {
-		props = append(props, Property{Name: "allocs/op", Value: match[6]})
+		result.SetProperty("allocs/op", match[6])
 	}
 
-	return &Properties{PropertyList: props}, benchmarkDuration, nil
+	return nil
 }
 
-func parse(raw []byte) (*TestSuites, error) {
+func parse(raw []byte) (*junit.Suites, error) {
 	lines := strings.Split(string(raw), "\n")
 
-	var suites TestSuites
-	var suite TestSuite
+	var suites junit.Suites
+	var suite junit.Suite
 	var logText string
 	for _, line := range lines {
 		// First handle multi-line log text aggregation
@@ -160,58 +121,59 @@ func parse(raw []byte) (*TestSuites, error) {
 			logText += strings.TrimPrefix(line, "    ") + "\n"
 			continue
 		} else if len(logText) > 0 {
-			suite.recordLogText(logText)
+			recordLogText(&suite, logText)
 			logText = ""
 		}
 
 		switch {
 		case reSuiteStart.MatchString(line):
 			match := reSuiteStart.FindStringSubmatch(line)
-			suite = TestSuite{
+			suite = junit.Suite{
 				Name: match[1],
 			}
 
 		case reSuiteEnd.MatchString(line):
 			match := reSuiteEnd.FindStringSubmatch(line)
 			if match[2] != suite.Name {
-				return nil, fmt.Errorf("mismatched package summary for %q with %q benchmarks", match[2], suite.Name)
+				// "Mismatched package summary for match[2] with suite.Name testsuites.
+				// This is normal in scenarios where the line matching pkg <packagename>
+				// is missing (running as a bazel test).
+				suite.Name = match[2]
 			}
 			duration, err := time.ParseDuration(match[3])
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse package test time %q: %v", match[3], err)
 			}
-			suite.Time = fmt.Sprintf("%f", duration.Seconds())
-			suites.List = append(suites.List, suite)
+			suite.Time = duration.Seconds()
+			suites.Suites = append(suites.Suites, suite)
+			suite = junit.Suite{}
 
 		case reBenchMetrics.MatchString(line):
 			match := reBenchMetrics.FindStringSubmatch(line)
-			tc := TestCase{
+			result := junit.Result{
 				ClassName: path.Base(suite.Name),
 				Name:      match[1],
 			}
-			props, duration, err := propertiesFromMatch(match)
-			if err != nil {
+			if err := applyPropertiesFromMatch(&result, match); err != nil {
 				return nil, fmt.Errorf("error parsing benchmark metric values: %v", err)
 			}
-			tc.PropertyList, tc.Time = *props, duration
-			suite.TestCases = append(suite.TestCases, tc)
+			suite.Results = append(suite.Results, result)
 			suite.Tests += 1
 
 		case reActionLine.MatchString(line):
 			match := reActionLine.FindStringSubmatch(line)
+			emptyText := "" // Will be replaced with real text once output is read.
 			if match[1] == "SKIP" {
-				suite.TestCases = append(suite.TestCases, TestCase{
+				suite.Results = append(suite.Results, junit.Result{
 					ClassName: path.Base(suite.Name),
 					Name:      match[2],
-					Time:      "0",
-					Skipped:   true,
+					Skipped:   &emptyText,
 				})
 			} else if match[1] == "FAIL" {
-				suite.TestCases = append(suite.TestCases, TestCase{
+				suite.Results = append(suite.Results, junit.Result{
 					ClassName: path.Base(suite.Name),
 					Name:      match[2],
-					Time:      "0",
-					Failure:   &Failure{},
+					Failure:   &emptyText,
 				})
 				suite.Failures += 1
 				suite.Tests += 1
