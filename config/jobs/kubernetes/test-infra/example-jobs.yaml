@@ -1,0 +1,107 @@
+# This file contains some example ProwJobs for common use cases. The kubernetes/test-infra repo is used as the example repo.
+# See the following docs for more detailed configuration information:
+#   https://github.com/kubernetes/test-infra/blob/master/prow/jobs.md#how-to-configure-new-jobs
+#   https://github.com/kubernetes/test-infra/blob/master/prow/jobs.md#standard-triggering-and-execution-behavior-for-jobs
+#   https://github.com/kubernetes/test-infra/blob/master/prow/jobs.md#pod-utilities
+
+# Presubmit jobs run on PullRequests before they merge.
+presubmits:
+  kubernetes/test-infra:
+  # basic golang presubmits
+  - name: pull-go-build
+    always_run: true
+    decorate: true
+    path_alias: k8s.io/test-infra
+    spec:
+      containers:
+      - image: golang:latest
+        command:
+        - go
+        args:
+        - build
+        - "..."
+  - name: pull-go-test
+    always_run: true
+    decorate: true
+    path_alias: k8s.io/test-infra
+    spec:
+      containers:
+      - image: golang:latest
+        command:
+        - go
+        args:
+        - test
+        - "..."
+  # manually triggered bazel presubmit
+  - name: pull-bazel-test
+    # Omitted "always_run: true" means that this job must be manually run with "/test pull-go-test".
+    decorate: true
+    spec:
+      containers:
+      - image: launcher.gcr.io/google/bazel
+        imagePullPolicy: Always
+        command:
+        - hack/bazel.sh # This script wraps bazel with a junit generator.
+        args:
+        - test
+        - //...
+  # prow config validation and linting presubmit
+  - name: pull-prow-config-check
+    decorate: true
+    always_run: true
+    spec:
+      containers:
+      - image: gcr.io/k8s-prow/checkconfig:latest
+        imagePullPolicy: Always
+        command:
+        - /checkconfig
+        args:
+        - --config-path=./prow/config.yaml
+        - --job-config-path=./config/jobs
+  # optional run_if_changed yaml lint presubmit
+  # (runs and reports whenever a .yaml file is changed, but is not required for merge by Tide)
+  - name: pull-test-infra-yamllint
+    always_run: true
+    optional: true
+    run_if_changed: "(?i)\.ya?ml$"
+    decorate: true
+    spec:
+      containers:
+      - image: quay.io/kubermatic/yamllint:0.1
+        command:
+        - yamllint
+        - config/jobs
+
+# Postsubmit jobs run when commits are pushed to the repo (including when a PR merges)
+postsubmits:
+  kubernetes/test-infra:
+    # golang postsubmit
+  - name: post-go-test
+    decorate: true
+    path_alias: k8s.io/test-infra
+    spec:
+      containers:
+      - image: golang:latest
+        command:
+        - go
+        args:
+        - test
+        - "..."
+
+periodics:
+# golang periodic with repo checkout
+- name: ci-go-test
+  decorate: true
+  extra_refs:
+    org: kubernetes
+    repo: test-infra
+    base_ref: master
+    path_alias: k8s.io/test-infra
+  spec:
+    containers:
+    - image: golang:latest
+      command:
+      - go
+      args:
+      - test
+      - "..."
