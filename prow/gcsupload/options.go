@@ -61,11 +61,18 @@ type Options struct {
 	// paths that are parsed to get more granular
 	// fields.
 	gcsPath gcs.Path
+
+	// LocalOutputDir specifies a directory where files should be copied INSTEAD of uploading to GCS.
+	// This option is useful for testing jobs that use the pod-utilities without actually uploading.
+	LocalOutputDir string `json:"local_output_dir,omitempty"`
 }
 
 // Validate ensures that the set of options are
 // self-consistent and valid.
 func (o *Options) Validate() error {
+	if o.LocalOutputDir != "" {
+		return nil
+	}
 	if o.gcsPath.String() != "" {
 		o.Bucket = o.gcsPath.Bucket()
 		o.PathPrefix = o.gcsPath.Object()
@@ -127,6 +134,8 @@ func (o *Options) AddFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&o.DryRun, "dry-run", true, "do not interact with GCS")
 
 	fs.Var(&o.mediaTypes, "media-type", "Optional comma-delimited set of extension media types.  Each entry is colon-delimited {extension}:{media-type}, for example, log:text/plain.")
+
+	fs.StringVar(&o.LocalOutputDir, "local-output-dir", "", "If specified, files are copied to this dir instead of uploading to GCS.")
 }
 
 const (
