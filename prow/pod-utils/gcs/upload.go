@@ -174,6 +174,11 @@ type localFileWriter struct {
 
 func (w *localFileWriter) Write(b []byte) (int, error) {
 	if w.file == nil {
+		if dir := path.Dir(w.filePath); dir != "." {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return 0, fmt.Errorf("error creating directory %q: %v", dir, err)
+			}
+		}
 		var err error
 		w.file, err = os.OpenFile(w.filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
 		if err != nil {

@@ -22,6 +22,6 @@ set -o pipefail
 export CONFIG_PATH="$(readlink -f $(dirname "${BASH_SOURCE[0]}")/../prow/config.yaml)"
 export JOB_CONFIG_PATH="$(readlink -f $(dirname "${BASH_SOURCE[0]}")/jobs)"
 
-../prow/pj-on-kind.sh "$@"
+$(dirname "${BASH_SOURCE[0]}")/../prow/pj-on-kind.sh "$@"
 # Swap the above command for the following one for use outside kubernetes/test-infra.
 # bash <(curl -s https://raw.githubusercontent.com/kubernetes/test-infra/master/prow/pj-on-kind.sh) "$@"
