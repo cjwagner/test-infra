@@ -7,10 +7,10 @@ plank:
     timeout: 2h
     grace_period: 15s
     utility_images:
-      clonerefs: "gcr.io/k8s-prow/clonerefs:v20190730-2a6ada267"
-      initupload: "gcr.io/k8s-prow/initupload:v20190730-2a6ada267"
-      entrypoint: "gcr.io/k8s-prow/entrypoint:v20190730-2a6ada267"
-      sidecar: "gcr.io/k8s-prow/sidecar:v20190730-2a6ada267"
+      clonerefs: "gcr.io/colew-test/clonerefs:latest"
+      initupload: "gcr.io/colew-test/initupload:latest"
+      entrypoint: "gcr.io/colew-test/entrypoint:latest"
+      sidecar: "gcr.io/colew-test/sidecar:latest"
     gcs_configuration:
       bucket: "kubernetes-jenkins"
       path_strategy: "legacy"
@@ -626,6 +626,8 @@ presets:
       readOnly: true
     - mountPath: /sys/fs/cgroup
       name: cgroup
+    - mountPath: /var/lib/docker
+      name: dind-storage
   volumes:
     - name: modules
       hostPath:
@@ -635,3 +637,5 @@ presets:
       hostPath:
         path: /sys/fs/cgroup
         type: Directory
+    - name: dind-storage
+      emptyDir: {}
