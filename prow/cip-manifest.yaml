@@ -1,9 +1,81 @@
-# Container Image Promoter manifest file for promoting images from gcr.io/k8s-prow-edge to gcr.io/k8s-prow
-# https://github.com/kubernetes-sigs/k8s-container-image-promoter/tree/master
-registries:
-- name: gcr.io/k8s-prow # publicly readable, does not need a service account for access
-  src: true # mark it as the source registry (required)
-- name: gcr.io/colew-test
-  service-account: promoter-test@colew-test.iam.gserviceaccount.com
-images:
-- name: checkconfig
+Images:
+- Dmap: null
+  ImageName: ""
+- Dmap:
+    sha256:a4660e4bd0e308150db4ec8e1d70a85aafd93835b134f27d1016d700e30f5e9c:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: build
+- Dmap:
+    sha256:2e87158a978485856b09931fe9732e84ce59518d796b1dcb3ef357c701d00916:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: horologium
+- Dmap:
+    sha256:2c7d443e3ae0186690650439d22156058d1ce30680ee47d579c5d9fae233eb5e:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: deck
+- Dmap:
+    sha256:d0e7a1a90ec52740933345a6aa42c582e2bc854f372ac29a79241d3d7ebc5326:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: ghproxy
+- Dmap:
+    sha256:f20a034f46c5a6ea2c0892eae6bade3ac258d72b791cebfeb5c909a5420c0e34:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: status-reconciler
+- Dmap:
+    sha256:e0e3b86b10f6829ee4445c34e84dfd768dc9a8d655420ec8865ac6afd0b7c595:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: needs-rebase
+- Dmap:
+    sha256:e7300bd793ca10cf345f04fd91a74e9a78d3bc604547d11fd178ce4ca4f8e4ca:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: crier
+- Dmap:
+    sha256:d7386922a4394c52cdfbaceeeaacaa27cb46fd8c7e0e59ae85cc8644d3703dd9:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: grandmatriarch
+- Dmap:
+    sha256:ecd7fabc92972c5c7f344a3491b7c9ec723a94cefed5a553080bda1b6535457a:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: plank
+- Dmap:
+    sha256:c74bf2bcd72b82c52aae122cdd93ea313dd89da4107f32b163d09246cf915494:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: hook
+- Dmap:
+    sha256:299804a13306ea0b8e9994da5b123908246c16d861d0d61a413c7bf04c022bcc:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: tot
+- Dmap:
+    sha256:068d84a9b8de55da104179c745e8c853fdff7e0747df09d15044b121c60263c6:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: sinker
+- Dmap:
+    sha256:7426243fe29bdf20d819b4d25df6ca3b4696a44bb5e438321c46b9b9579f01a8:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: pipeline
+- Dmap:
+    sha256:ea34106337731bb4c3ed9137bcd1972f67d94d4f81df8b0fb4caf6e0f3a15560:
+    - v20190927-4e35daa5b
+    - latest
+  ImageName: tide
+Registries:
+- Name: gcr.io/k8s-prow
+  ServiceAccount: ""
+  Src: true
+- Name: gcr.io/colew-test
+  ServiceAccount: ""
+  Src: false
+Renames: null
