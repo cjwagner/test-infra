@@ -164,7 +164,14 @@ func doOneshot(ctx context.Context, client *storage.Client, opt *options.Options
 	}
 
 	if opt.ValidateConfigFile {
-		return tgCfgUtil.Validate(&c)
+		err := tgCfgUtil.Validate(&c)
+		// Sometimes these are pointers.
+		_, ok1 := err.(tgCfgUtil.ConfigError)
+		_, ok2 := err.(*tgCfgUtil.ConfigError)
+		if ok1 || ok2 {
+			log.Println("Consider adding the 'testgrid-create-test-group: \"false\"' annotation to your ProwJob if you don't intend to use TestGrid.")
+		}
+		return err
 	}
 
 	// Print proto if requested
